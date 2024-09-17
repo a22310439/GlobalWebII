@@ -4,13 +4,16 @@ import { faSearch } from '@fortawesome/free-solid-svg-icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShoppingCart } from '@fortawesome/free-solid-svg-icons';
-import { CartContext } from '../context/CartContext'; // Importa el contexto del carrito
+import { CartContext } from '../context/CartContext'; 
+import { useAuth } from '../context/AuthContext'; // Usa el contexto de autenticación
 
 const Header = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  const { getTotalItems } = useContext(CartContext); // Obtén el número total de artículos
-  const totalItems = getTotalItems(); // Calcula el total de artículos
+  const { getTotalItems } = useContext(CartContext);
+  const { currentUser, logout } = useAuth(); // Obtén currentUser y logout desde AuthContext
+
+  const totalItems = getTotalItems();
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
@@ -42,6 +45,17 @@ const Header = () => {
         </SearchButton>
       </SearchBarContainer>
       <Nav>
+      {currentUser ? (
+        <UserMenu>
+          <WelcomeText>Hola, {currentUser.displayName}</WelcomeText>
+          <UserDropdown>
+            <button onClick={logout}>Cerrar sesión</button>
+          </UserDropdown>
+        </UserMenu>
+        ) : (
+        <LoginLink to="/login">Iniciar sesión</LoginLink>
+        )}
+
         <Link to="/cart">
           <CartIconContainer>
             <CartIcon icon={faShoppingCart} />
@@ -55,9 +69,10 @@ const Header = () => {
 
 export default Header;
 
+// Estilos
 const HeaderContainer = styled.header`
   background-color: #004f9a;
-  padding: 0px;
+  padding: 0px 20px;
   color: white;
   display: flex;
   justify-content: space-between;
@@ -97,7 +112,7 @@ const SearchBarContainer = styled.form`
 `;
 
 const SearchInput = styled.input`
-  width: 100%;
+  width: 80%;
   padding: 10px;
   border-radius: 50px 0 0 50px;
   border: none;
@@ -123,13 +138,23 @@ const SearchButton = styled.button`
 `;
 
 const Nav = styled.nav`
-  flex: 1;
   display: flex;
+  flex: 0.8;
+  align-items: center;
   justify-content: flex-end;
-  
-  a {
-    font-size: 18px;
-    margin-right: 50px;
+  margin-left: 20px;
+  gap: 20px;
+`;
+
+const LoginLink = styled(Link)`
+  font-size: 18px;
+  margin-right: 20px;
+  color: white;
+  flex: 1;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
   }
 `;
 
@@ -140,6 +165,7 @@ const CartIconContainer = styled.div`
 const CartIcon = styled(FontAwesomeIcon)`
   font-size: 24px;
   cursor: pointer;
+  margin-right: 20px;
   transition: transform 0.3s ease;
 
   &:hover {
@@ -162,11 +188,50 @@ const CartIcon = styled(FontAwesomeIcon)`
 const CartBadge = styled.span`
   position: absolute;
   top: -20px;
-  right: -20px;
+  right: 0;
   background-color: #e74c3c;
   color: white;
   border-radius: 50%;
   padding: 5px 10px;
   font-size: 12px;
   font-weight: bold;
+`;
+
+const UserMenu = styled.div`
+  position: relative;
+  display: inline-block;
+  flex: 1;
+`;
+
+const WelcomeText = styled.span`
+  font-size: 16px;
+  margin-right: 10px;
+`;
+
+const UserDropdown = styled.div`
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  left: 0;
+  top: 100%;
+  min-width: 150px;
+  z-index: 1;
+
+  ${UserMenu}:hover & {
+    display: block;
+  }
+
+  button {
+    background-color: transparent;
+    border: none;
+    color: #004f9a;
+    font-size: 16px;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 `;
