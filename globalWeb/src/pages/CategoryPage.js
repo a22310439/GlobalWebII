@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import products from '../data/products';
-import { CartContext } from '../context/CartContext';
+import { useCart } from '../context/CartContext';
 
 // Mapeo de traducciones de categorías
 const categoryTranslations = {
@@ -119,7 +119,7 @@ const ProductCard = styled.div`
 const CategoryPage = () => {
   const { categoryName } = useParams();
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const { addToCart } = useContext(CartContext);  // Usa el contexto para acceder a la función addToCart
+  const { addToCart } = useCart();
 
   useEffect(() => {
     const data = products.filter(product => product.category === categoryName);

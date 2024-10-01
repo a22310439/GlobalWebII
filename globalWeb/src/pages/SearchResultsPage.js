@@ -1,7 +1,7 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
-import { CartContext } from '../context/CartContext'; // Importa el contexto del carrito
+import { useCart } from '../context/CartContext';
 import products from '../data/products';
 
 // Estilo para la lista de resultados de búsqueda
@@ -97,7 +97,7 @@ const ProductCard = styled.div`
 
 const SearchResultsPage = () => {
   const { searchTerm } = useParams();
-  const { addToCart } = useContext(CartContext); // Usa el contexto para acceder a la función addToCart
+  const { addToCart } = useCart();
 
   // Filtra los productos en base al término de búsqueda
   const filteredProducts = products.filter(product =>

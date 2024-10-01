@@ -1,10 +1,10 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import styled from 'styled-components';
-import { CartContext } from '../context/CartContext';
+import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 
 const CartPage = () => {
-  const { cartItems, updateCartItemQuantity, removeFromCart } = useContext(CartContext);
+  const { cartItems, updateCartItemQuantity, removeFromCart } = useCart();
 
   const totalItemsInCart = cartItems.reduce((total, item) => total + item.quantity, 0);
 

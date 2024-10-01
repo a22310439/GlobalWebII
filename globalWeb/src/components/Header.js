@@ -1,16 +1,16 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { faSearch } from '@fortawesome/free-solid-svg-icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShoppingCart } from '@fortawesome/free-solid-svg-icons';
-import { CartContext } from '../context/CartContext'; 
+import { useCart } from '../context/CartContext'; // Cambia CartContext a useCart
 import { useAuth } from '../context/AuthContext'; // Usa el contexto de autenticación
 
 const Header = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  const { getTotalItems } = useContext(CartContext);
+  const { getTotalItems } = useCart(); // Usa el hook useCart en lugar de CartContext
   const { currentUser, logout } = useAuth(); // Obtén currentUser y logout desde AuthContext
 
   const totalItems = getTotalItems();
@@ -45,17 +45,16 @@ const Header = () => {
         </SearchButton>
       </SearchBarContainer>
       <Nav>
-      {currentUser ? (
-        <UserMenu>
-          <WelcomeText>Hola, {currentUser.displayName}</WelcomeText>
-          <UserDropdown>
-            <button onClick={logout}>Cerrar sesión</button>
-          </UserDropdown>
-        </UserMenu>
+        {currentUser ? (
+          <UserMenu>
+            <WelcomeText>Hola, {currentUser.displayName}</WelcomeText>
+            <UserDropdown>
+              <button onClick={logout}>Cerrar sesión</button>
+            </UserDropdown>
+          </UserMenu>
         ) : (
-        <LoginLink to="/login">Iniciar sesión</LoginLink>
+          <LoginLink to="/login">Iniciar sesión</LoginLink>
         )}
-
         <Link to="/cart">
           <CartIconContainer>
             <CartIcon icon={faShoppingCart} />
