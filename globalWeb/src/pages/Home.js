@@ -159,16 +159,6 @@ const ProductDetails = styled.div`
   }
 `;
 
-const PriceDetails = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-
-  span {
-    margin-right: 10px;
-  }
-`;
-
 const OldPrice = styled.span`
   text-decoration: line-through;
   color: #999;
@@ -205,6 +195,14 @@ const Offers = () => {
   const [bannerImages, setBannerImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [error, setError] = useState(null);
+
+  // Filtrar productos que tienen descuento
+  const discountedProducts = products.filter(product => product.discount).slice(0, 6);
+
+  // Función para calcular el precio con descuento
+  const calculateDiscountPrice = (price, discountPercentage) => {
+    return price - (price * (discountPercentage / 100));
+  };
 
   useEffect(() => {
     const imagePaths = [
@@ -249,9 +247,6 @@ const Offers = () => {
     setCurrentImageIndex(index);
   };
 
-  // Filtramos productos de ofertas
-  const offers = products.filter(product => product.discount).slice(0, 6);
-
   if (error) {
     return <div>Error al cargar las imágenes...</div>;
   }
@@ -284,44 +279,37 @@ const Offers = () => {
       </BannerWrapper>
 
       <OffersSection>
-        <Title>Ofertas</Title>
-        <OfferGrid>
-          {offers.map((offer) => {
-            // Cálculo del precio con descuento (si aplica)
-            const discountAmount = offer.discount ? (offer.price * offer.discount) / 100 : 0;
-            const discountedPrice = (offer.price - discountAmount).toFixed(2);
+      <Title>Ofertas</Title>
+      <OfferGrid>
+        {discountedProducts.map((product) => {
+          const discountedPrice = calculateDiscountPrice(product.price, product.discountPercentage);
 
-            return (
-              <OfferCard key={offer.id}>
-                <ProductImage src={offer.image} alt={offer.name} />
-                <ProductInfo>
-                  <ProductDetails>
-                    <h3>{offer.name}</h3>
-
-                    {/* Mostrar el precio original y el precio con descuento */}
-                    <PriceDetails>
-                      {offer.discount && (
-                        <>
-                          <OldPrice>${offer.price.toFixed(2)}</OldPrice>
-                          <DiscountTag>{offer.discount}% menos</DiscountTag>
-                        </>
-                      )}
-                    </PriceDetails>
-
-                    {/* Mostrar el precio con o sin descuento */}
-                    <span className="price">${discountedPrice}</span>
-                  </ProductDetails>
-
-                  {/* Botón para añadir al carrito */}
-                  <Link to="#" onClick={() => addToCart(offer)}>
-                    <CartButton>Añadir al carrito</CartButton>
-                  </Link>
-                </ProductInfo>
-              </OfferCard>
-            );
-          })}
-        </OfferGrid>
-      </OffersSection>
+          return (
+            <OfferCard key={product.id}>
+              <ProductImage src={product.image} alt={product.name} />
+              <ProductInfo>
+                <ProductDetails>
+                  <h3>{product.name}</h3>
+                  {/* Mostrar el precio original y el precio con descuento */}
+                  <p>
+                    <OldPrice>${product.price.toFixed(2)}</OldPrice>
+                    <DiscountTag>{product.discountPercentage}% menos</DiscountTag>
+                  </p>
+                  <span className="price">${discountedPrice.toFixed(2)}</span>
+                </ProductDetails>
+                <CartButton onClick={() => addToCart({
+                  ...product,
+                  priceBeforeDiscount: product.price,
+                  price: discountedPrice, // Agregar el precio con descuento al carrito
+                })}>
+                  Añadir al carrito
+                </CartButton>
+              </ProductInfo>
+            </OfferCard>
+          );
+        })}
+      </OfferGrid>
+    </OffersSection>
     </MainContainer>
   );
 };

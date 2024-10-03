@@ -8,8 +8,25 @@ const CartPage = () => {
 
   const totalItemsInCart = cartItems.reduce((total, item) => total + item.quantity, 0);
 
+  // Calcular el monto total del descuento
+  const totalDiscount = cartItems.reduce((total, item) => {
+    if (item.discount) {
+      const discountAmount = (item.priceBeforeDiscount - item.price) * item.quantity;
+      return total + discountAmount;
+    }
+    return total;
+  }, 0);
+
+  // Calcular el subtotal después del descuento
+  const subtotalAfterDiscount = cartItems.reduce((total, item) => total + item.price * item.quantity, 0) - totalDiscount;
+
+  // Calcular el IVA (16% del subtotal después del descuento)
+  const iva = subtotalAfterDiscount * 0.16;
+
   const handleIncreaseQuantity = (item) => {
-    updateCartItemQuantity(item.id, item.quantity + 1);
+    if (item.quantity < 5 && item.quantity < item.stock) {
+      updateCartItemQuantity(item.id, item.quantity + 1);
+    }
   };
 
   const handleDecreaseQuantity = (item) => {
@@ -48,12 +65,30 @@ const CartPage = () => {
               <img src={item.image} alt={item.name} />
               <ProductDetails>
                 <h3>{item.name}</h3>
-                <p>${item.price.toFixed(2)}</p>
+
+                {/* Mostrar el precio original y el precio con descuento si aplica */}
+                {item.discount ? (
+                  <p>
+                    <span style={{ textDecoration: 'line-through', color: '#999' }}>
+                      ${item.priceBeforeDiscount.toFixed(2)}
+                    </span>{' '}
+                    <span>${item.price.toFixed(2)}</span>
+                  </p>
+                ) : (
+                  <p>${item.price.toFixed(2)}</p>
+                )}
+
                 <QuantityControls>
                   <button onClick={() => handleDecreaseQuantity(item)}>-</button>
                   <span>{item.quantity}</span>
-                  <button onClick={() => handleIncreaseQuantity(item)}>+</button>
+                  <button onClick={() => handleIncreaseQuantity(item)} disabled={item.quantity >= 5 || item.quantity >= item.stock}>
+                    +
+                  </button>
                 </QuantityControls>
+
+                {item.stock <= 0 && <p style={{ color: 'red' }}>Sin stock disponible</p>}
+                {item.quantity === item.stock && <p style={{ color: 'orange' }}>Stock limitado: No hay más unidades</p>}
+
                 <RemoveButton onClick={() => removeFromCart(item.id)}>Eliminar</RemoveButton>
               </ProductDetails>
               <TotalPrice>${(item.price * item.quantity).toFixed(2)}</TotalPrice>
@@ -61,9 +96,19 @@ const CartPage = () => {
           ))}
         </CartItems>
         <CartSummary>
-          <p>Subtotal ({totalItemsInCart} artículo{totalItemsInCart !== 1 && 's'}): ${cartItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}</p>
-          <p>Envío a domicilio: $54.00</p>
-          <p>Total: ${(cartItems.reduce((total, item) => total + item.price * item.quantity, 0) + 54).toFixed(2)}</p>
+          <p>Subtotal ({totalItemsInCart} artículo{totalItemsInCart !== 1 && 's'}): <span>${cartItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}</span></p>
+
+          {/* Mostrar el total del descuento en color verde */}
+          {totalDiscount > 0 && <DiscountText>Descuento: <span>-${totalDiscount.toFixed(2)}</span></DiscountText>}
+
+          {/* Mostrar el IVA (16%) */}
+          <p>IVA (16%): <span>${iva.toFixed(2)}</span></p>
+
+          {/* Barra separadora */}
+          <Separator />
+
+          {/* Mostrar el total en negritas */}
+          <TotalText>Total: <span>${(subtotalAfterDiscount + iva).toFixed(2)}</span></TotalText>
           <CheckoutButton>Continuar</CheckoutButton>
         </CartSummary>
       </CartContent>
@@ -73,7 +118,30 @@ const CartPage = () => {
 
 export default CartPage;
 
-// Estilos
+// Definimos el componente CategoryLinks
+const CategoryLinks = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 20px;
+
+  a {
+    margin: 5px;
+    padding: 10px 20px;
+    border: 1px solid #004f9a;
+    border-radius: 50px;
+    text-decoration: none;
+    color: #004f9a;
+    font-size: 16px;
+
+    &:hover {
+      background-color: #004f9a;
+      color: white;
+    }
+  }
+`;
+
+// Estilos adicionales
 const EmptyCartContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -115,38 +183,16 @@ const EmptyCartContainer = styled.div`
   }
 `;
 
-const CategoryLinks = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-bottom: 20px;
-
-  a {
-    margin: 5px;
-    padding: 10px 20px;
-    border: 1px solid #004f9a;
-    border-radius: 50px;
-    text-decoration: none;
-    color: #004f9a;
-    font-size: 16px;
-
-    &:hover {
-      background-color: #004f9a;
-      color: white;
-    }
-  }
-`;
-
 const CartContainer = styled.div`
-  margin-top: 40px; /* Agrega espacio entre el header y el contenido del carrito */
+  width: 80%;
+  margin: 0px auto;
   padding: 20px;
 `;
 
 const CartContent = styled.div`
   display: flex;
   justify-content: space-between;
-
-  /* Media query para apilar CartItems y CartSummary en pantallas pequeñas */
+  flex-direction: row; /* Cambia según el tamaño de la pantalla */
   @media (max-width: 768px) {
     flex-direction: column;
   }
@@ -166,16 +212,25 @@ const CartItem = styled.div`
   border: 1px solid #ccc;
   border-radius: 10px;
   background-color: #fff;
+  flex-wrap: wrap;
 
   img {
     width: 100px;
     height: auto;
     margin-right: 20px;
   }
+
+  @media (max-width: 480px) {
+    flex-direction: column; /* Cambia a diseño en columna en pantallas pequeñas */
+    text-align: center; /* Centrar el texto y los botones */
+    img {
+      margin-bottom: 10px;
+    }
+  }
 `;
 
 const ProductDetails = styled.div`
-  flex-grow: 1; /* Esto permite que el contenedor ocupe el espacio disponible */
+  flex-grow: 1;
   display: flex;
   flex-direction: column;
 `;
@@ -199,6 +254,11 @@ const QuantityControls = styled.div`
 
     &:hover {
       background-color: #003366;
+    }
+
+    &:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
     }
   }
 
@@ -225,8 +285,13 @@ const TotalPrice = styled.p`
   font-size: 18px;
   font-weight: bold;
   color: #333;
-  align-self: flex-end; /* Alinea el precio a la derecha */
+  align-self: flex-end;
   margin: 0;
+
+  @media (max-width: 480px) {
+    align-self: center; /* Centrar el precio en pantallas pequeñas */
+    margin-top: 10px; /* Añadir margen superior para separarlo del resto */
+  }
 `;
 
 const CartSummary = styled.div`
@@ -237,16 +302,51 @@ const CartSummary = styled.div`
   background-color: #fff;
   height: fit-content;
 
-  p {
-    font-size: 18px;
-    margin: 10px 0;
+  @media (max-width: 480px) {
+    padding: 15px;
+    font-size: 16px;
   }
 
-  p:nth-child(3) {
-    font-size: 24px;
-    font-weight: bold;
-    color: #27ae60;
+  p {
+    display: flex;
+    justify-content: space-between; /* Alinea el texto y los números */
+    margin: 10px 0;
+    font-size: 18px;
   }
+
+  /* Si quieres que el total tenga un estilo diferente, puedes hacerlo aquí */
+  p.total {
+    font-weight: bold;
+    font-size: 24px;
+    margin-top: 20px;
+    border-top: 1px solid #ccc; /* Añadir línea superior para separar el total */
+    padding-top: 10px;
+  }
+`;
+
+const DiscountText = styled.p`
+  color: #27ae60;
+  font-size: 18px;
+  margin: 10px 0;
+  display: flex;
+  justify-content: space-between;
+`;
+
+const TotalText = styled.p`
+  font-size: 24px;
+  font-weight: bold;
+  margin: 20px 0;
+  display: flex;
+  justify-content: space-between;
+  @media (max-width: 480px) {
+    font-size: 18px;
+  }
+`;
+
+const Separator = styled.hr`
+  border: none;
+  border-top: 2px solid #ccc;
+  margin: 20px 0;
 `;
 
 const CheckoutButton = styled.button`
@@ -259,8 +359,11 @@ const CheckoutButton = styled.button`
   font-size: 18px;
   width: 100%;
   margin-top: 20px;
-
   &:hover {
     background-color: #003366;
+  }
+  @media (max-width: 480px) {
+    padding: 12px;
+    font-size: 16px;
   }
 `;
