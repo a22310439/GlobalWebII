@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useCart } from '../context/CartContext';
+import { storage } from '../firebase';
+import { ref, getDownloadURL } from 'firebase/storage';
 import { Link } from 'react-router-dom';
 
 const CartPage = () => {
@@ -35,10 +37,24 @@ const CartPage = () => {
     }
   };
 
+  const [emptyCartImageUrl, setEmptyCartImageUrl] = useState('');
+
+  useEffect(() => {
+    const fetchEmptyCartImage = async () => {
+      try {
+        const url = await getDownloadURL(ref(storage, 'carritoVacio.webp'));
+        setEmptyCartImageUrl(url);
+      } catch (error) {
+        console.error('Error al obtener la imagen del carrito vacío desde Firebase Storage:', error);
+      }
+    };
+    fetchEmptyCartImage();
+  }, []);
+
   if (totalItemsInCart === 0) {
     return (
       <EmptyCartContainer>
-        <img src="/images/carritoVacio.webp" alt="Carrito vacío" />
+        {emptyCartImageUrl && <img src={emptyCartImageUrl} alt="Carrito vacío" />}
         <h2>Es momento de comprar</h2>
         <p>Tu carrito está vacío</p>
         <p>Llénalo con productos de estas categorías:</p>
@@ -68,12 +84,14 @@ const CartPage = () => {
 
                 {/* Mostrar el precio original y el precio con descuento si aplica */}
                 {item.discount ? (
-                  <p>
-                    <span style={{ textDecoration: 'line-through', color: '#999' }}>
-                      ${item.priceBeforeDiscount.toFixed(2)}
-                    </span>{' '}
-                    <span>${item.price.toFixed(2)}</span>
-                  </p>
+                  <div>
+                    <p>
+                      <span style={{ textDecoration: 'line-through', color: '#999' }}>
+                        ${item.priceBeforeDiscount ? item.priceBeforeDiscount.toFixed(2) : item.price.toFixed(2)}
+                      </span>{' '}
+                      <DiscountTag>{item.discountPercentage}% menos</DiscountTag>
+                    </p>
+                  </div>
                 ) : (
                   <p>${item.price.toFixed(2)}</p>
                 )}
@@ -99,7 +117,7 @@ const CartPage = () => {
           <p>Subtotal ({totalItemsInCart} artículo{totalItemsInCart !== 1 && 's'}): <span>${cartItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}</span></p>
 
           {/* Mostrar el total del descuento en color verde */}
-          {totalDiscount > 0 && <DiscountText>Descuento: <span>-${totalDiscount.toFixed(2)}</span></DiscountText>}
+          {totalDiscount > 0 && <DiscountText>Descuento: <span>-${totalDiscount ? totalDiscount.toFixed(2) : '0.00'}</span></DiscountText>}
 
           {/* Mostrar el IVA (16%) */}
           <p>IVA (16%): <span>${iva.toFixed(2)}</span></p>
@@ -192,7 +210,7 @@ const CartContainer = styled.div`
 const CartContent = styled.div`
   display: flex;
   justify-content: space-between;
-  flex-direction: row; /* Cambia según el tamaño de la pantalla */
+  flex-direction: row;
   @media (max-width: 768px) {
     flex-direction: column;
   }
@@ -221,8 +239,8 @@ const CartItem = styled.div`
   }
 
   @media (max-width: 480px) {
-    flex-direction: column; /* Cambia a diseño en columna en pantallas pequeñas */
-    text-align: center; /* Centrar el texto y los botones */
+    flex-direction: column;
+    text-align: center;
     img {
       margin-bottom: 10px;
     }
@@ -287,10 +305,12 @@ const TotalPrice = styled.p`
   color: #333;
   align-self: flex-end;
   margin: 0;
+  text-align: right;
+  flex: 0 0 auto;
 
   @media (max-width: 480px) {
-    align-self: center; /* Centrar el precio en pantallas pequeñas */
-    margin-top: 10px; /* Añadir margen superior para separarlo del resto */
+    align-self: flex-end;
+    margin-top: 10px;
   }
 `;
 
@@ -301,27 +321,30 @@ const CartSummary = styled.div`
   border-radius: 10px;
   background-color: #fff;
   height: fit-content;
+  align-self: flex-start;
 
   @media (max-width: 480px) {
     padding: 15px;
     font-size: 16px;
+    align-self: flex-end;
   }
 
   p {
     display: flex;
-    justify-content: space-between; /* Alinea el texto y los números */
+    justify-content: space-between;
     margin: 10px 0;
     font-size: 18px;
   }
+`;
 
-  /* Si quieres que el total tenga un estilo diferente, puedes hacerlo aquí */
-  p.total {
-    font-weight: bold;
-    font-size: 24px;
-    margin-top: 20px;
-    border-top: 1px solid #ccc; /* Añadir línea superior para separar el total */
-    padding-top: 10px;
-  }
+const DiscountTag = styled.span`
+  background-color: #f00;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-left: 10px;
 `;
 
 const DiscountText = styled.p`

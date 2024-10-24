@@ -1,7 +1,7 @@
 const products = [
     { id: 1, name: "Cable USB Tipo C a Tipo C 60W 1 metro Negro 1Hora", category: "cables", price: 109.00, image: "/images/cables/cable1.webp", stock: 2, discount: true, discountPercentage: 30 },
     { id: 2, name: "Cable USB Tipo C a Tipo C 100W 1 metro Negro UGREEN", category: "cables", price: 159.00, image: "/images/cables/cable2.webp", stock: 25, discount: false, discountPercentage: 0 },
-    { id: 3, name: "Cable USB Tipo A a Tipo C 1.8 metros Rojo/Negro Perfect Choice", category: "cables", price: 139.00, image: "/images/cables/cable3.webp", stock: 25, discount: true, discountPercentage: 15 },
+    { id: 3, name: "Cable USB Tipo A a Tipo C 1.8 metros Rojo/Negro Perfect Choice", category: "cables", price: 139.00, image: "/images/cables/cable3.webp", stock: 25, discount: true, discountPercentage: 30 },
     { id: 4, name: "Cable USB Tipo A a Tipo C 1 metro Rojo/Amarillo reforzado Billboard", category: "cables", price: 199.00, image: "/images/cables/cable4.webp", stock: 25, discount: false, discountPercentage: 0 },
     { id: 5, name: "Cable USB Tipo A a Tipo C 1 metro Blanco Ackteck Mobifree", category: "cables", price: 199.00, image: "/images/cables/cable5.webp", stock: 25, discount: true, discountPercentage: 15 },
     { id: 6, name: "Cable USB Tipo C a Tipo C 60W 1 metro Negro Vorago", category: "cables", price: 199.00, image: "/images/cables/cable6.webp", stock: 25, discount: false, discountPercentage: 0 },

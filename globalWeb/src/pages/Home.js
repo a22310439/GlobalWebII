@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
-import { storage } from '../firebase';
+import { storage, db } from '../firebase'; // Importamos Firestore
 import { ref, getDownloadURL } from "firebase/storage";
-import products from '../data/products'; // Importamos los productos
+import { collection, getDocs } from 'firebase/firestore'; // Firestore para obtener documentos
 import { useCart } from '../context/CartContext'; // Importamos el contexto del carrito
 
 // Estilos para el contenedor principal
@@ -12,7 +12,7 @@ const MainContainer = styled.div`
   background-color: #f5f5f5;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
 `;
 
@@ -24,7 +24,7 @@ const BannerWrapper = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   overflow: hidden;
   margin-top: 20px;
@@ -33,22 +33,27 @@ const BannerWrapper = styled.div`
 
 const Banner = styled.div`
   width: 100%;
-  height: 400px;
+  height: 50vh; max-height: 400px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   
   img {
     width: 100%;
-    height: 100%;
+    height: auto;
     object-fit: cover;
-  }
+    @media (max-width: 768px) {
+      object-fit: contain;
+    }
+    @media (max-width: 480px) {
+      object-fit: cover;
+    }
 `;
 
 // Estilo de los puntos de navegación
 const DotsContainer = styled.div`
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   margin-top: 10px;
   margin-bottom: 10px;
@@ -81,7 +86,7 @@ const OffersSection = styled.div`
 `;
 
 const Title = styled.h2`
-  font-size: 1.8rem;
+  font-size: 1.5rem; @media (max-width: 768px) { font-size: 1.2rem; }
   color: #333;
   margin-bottom: 20px;
   text-align: left;
@@ -92,12 +97,13 @@ const OfferGrid = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1050px) {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 750px) {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 `;
 
@@ -105,7 +111,7 @@ const OfferGrid = styled.div`
 const OfferCard = styled.div`
   display: flex;
   justify-content: space-between;
-  padding: 20px;
+  padding: 15px; @media (max-width: 768px) { padding: 10px; }
   border: 1px solid #ccc;
   border-radius: 8px;
   background-color: #fff;
@@ -122,12 +128,12 @@ const ProductInfo = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  width: 70%;
+  width: 100%;
 `;
 
 const ProductImage = styled.img`
-  width: 150px;
-  height: 150px;
+  width: 100%; max-width: 100px;
+  height: auto;
   object-fit: contain;
   margin-right: 20px;
   margin-left: 20px;
@@ -136,7 +142,7 @@ const ProductImage = styled.img`
 const ProductDetails = styled.div`
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
 
   h3 {
     font-size: 13px;
@@ -168,6 +174,7 @@ const OldPrice = styled.span`
 const DiscountTag = styled.span`
   background-color: #f00;
   color: #fff;
+  width: 50px;
   padding: 5px 10px;
   border-radius: 20px;
   font-size: 12px;
@@ -191,19 +198,44 @@ const CartButton = styled.button`
 `;
 
 const Offers = () => {
-  const { addToCart } = useCart(); // Accedemos a la función addToCart del contexto
+  const { addToCart } = useCart(); 
   const [bannerImages, setBannerImages] = useState([]);
+  const [products, setProducts] = useState([]); // Cambiamos para obtener productos desde Firestore
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [error, setError] = useState(null);
 
-  // Filtrar productos que tienen descuento
-  const discountedProducts = products.filter(product => product.discount).slice(0, 6);
+  // Función para obtener productos de Firestore y sus imágenes desde Firebase Storage
+  const fetchProducts = async () => {
+    try {
+      const productsCollection = collection(db, 'products'); // La colección en Firestore
+      const productsSnapshot = await getDocs(productsCollection); // Obtener todos los documentos
+      const productsList = await Promise.all(
+        productsSnapshot.docs.map(async (doc) => {
+          const productData = doc.data();
+          try {
+            // Obtener la URL de la imagen desde Firebase Storage
+            const imageUrl = await getDownloadURL(ref(storage, productData.image));
+            return { id: doc.id, ...productData, image: imageUrl }; // Guardar la URL de la imagen en el producto
+          } catch (error) {
+            console.error("Error al obtener la imagen del producto:", productData.image, error);
+            return null; // Si falla la imagen, devolvemos null
+          }
+        })
+      );
 
-  // Función para calcular el precio con descuento
-  const calculateDiscountPrice = (price, discountPercentage) => {
-    return price - (price * (discountPercentage / 100));
+      // Filtrar productos válidos (sin errores al obtener las imágenes)
+      setProducts(productsList.filter(Boolean));
+    } catch (error) {
+      console.error("Error al obtener los productos de Firestore:", error);
+    }
   };
 
+  // Obtener los productos al cargar la página
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // Cargar las imágenes del banner
   useEffect(() => {
     const imagePaths = [
       { path: 'Banners/cablesBanner.webp', link: '/category/cables' },
@@ -232,19 +264,26 @@ const Offers = () => {
     });
   }, []);
 
+  // Configuración del slider para las imágenes del banner
   useEffect(() => {
     if (bannerImages.length === 0) return;
-
     const nextImage = () => {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % bannerImages.length);
     };
-
     const interval = setInterval(nextImage, 5000);
     return () => clearInterval(interval);
-  }, [bannerImages, currentImageIndex]);
+  }, [bannerImages]);
 
   const goToImage = (index) => {
     setCurrentImageIndex(index);
+  };
+
+  // Filtrar productos que tienen descuento
+  const discountedProducts = products.filter(product => product.discount).slice(0, 6);
+
+  // Función para calcular el precio con descuento
+  const calculateDiscountPrice = (price, discountPercentage) => {
+    return price - (price * (discountPercentage / 100));
   };
 
   if (error) {
@@ -261,8 +300,6 @@ const Offers = () => {
                 <img src={bannerImages[currentImageIndex].url} alt="Banner" />
               </Banner>
             </Link>
-
-            {/* Puntos de navegación */}
             <DotsContainer>
               {bannerImages.map((_, index) => (
                 <Dot 
@@ -290,10 +327,11 @@ const Offers = () => {
               <ProductInfo>
                 <ProductDetails>
                   <h3>{product.name}</h3>
-                  {/* Mostrar el precio original y el precio con descuento */}
                   <p>
                     <OldPrice>${product.price.toFixed(2)}</OldPrice>
+                    <div>
                     <DiscountTag>{product.discountPercentage}% menos</DiscountTag>
+                    </div>
                   </p>
                   <span className="price">${discountedPrice.toFixed(2)}</span>
                 </ProductDetails>

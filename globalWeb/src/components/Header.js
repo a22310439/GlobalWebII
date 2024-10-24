@@ -1,13 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { faSearch } from '@fortawesome/free-solid-svg-icons';
 import { Link, useNavigate } from 'react-router-dom';
+import { storage } from '../firebase';
+import { ref, getDownloadURL } from 'firebase/storage';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShoppingCart } from '@fortawesome/free-solid-svg-icons';
 import { useCart } from '../context/CartContext'; // Cambia CartContext a useCart
 import { useAuth } from '../context/AuthContext'; // Usa el contexto de autenticación
 
 const Header = () => {
+  const [logoUrl, setLogoUrl] = useState('');
+
+  useEffect(() => {
+    const fetchLogoUrl = async () => {
+      try {
+        const url = await getDownloadURL(ref(storage, 'logo.png'));
+        setLogoUrl(url);
+      } catch (error) {
+        console.error('Error al obtener el logo desde Firebase Storage:', error);
+      }
+    };
+    fetchLogoUrl();
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const { getTotalItems } = useCart(); // Usa el hook useCart en lugar de CartContext
@@ -30,7 +45,7 @@ const Header = () => {
     <HeaderContainer>
       <LogoContainer>
         <Link to="/">
-          <Logo src='/images/logo.png' alt="Electricity company" />
+          {logoUrl && <Logo src={logoUrl} alt="Electricity company" />}
         </Link>
       </LogoContainer>
       <SearchBarContainer onSubmit={handleSearchSubmit}>
