@@ -20,7 +20,7 @@ const CartPage = () => {
   }, 0);
 
   // Calcular el subtotal después del descuento
-  const subtotalAfterDiscount = cartItems.reduce((total, item) => total + item.price * item.quantity, 0) - totalDiscount;
+  const subtotalAfterDiscount = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
 
   // Calcular el IVA (16% del subtotal después del descuento)
   const iva = subtotalAfterDiscount * 0.16;
