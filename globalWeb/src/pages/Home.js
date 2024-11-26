@@ -327,12 +327,12 @@ const Offers = () => {
               <ProductInfo>
                 <ProductDetails>
                   <h3>{product.name}</h3>
-                  <p>
+                  <div>
                     <OldPrice>${product.price.toFixed(2)}</OldPrice>
                     <div>
                     <DiscountTag>{product.discountPercentage}% menos</DiscountTag>
                     </div>
-                  </p>
+                  </div>
                   <span className="price">${discountedPrice.toFixed(2)}</span>
                 </ProductDetails>
                 <CartButton onClick={() => addToCart({

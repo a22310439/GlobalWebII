@@ -6,12 +6,20 @@ import { storage } from '../firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShoppingCart } from '@fortawesome/free-solid-svg-icons';
-import { useCart } from '../context/CartContext'; // Cambia CartContext a useCart
-import { useAuth } from '../context/AuthContext'; // Usa el contexto de autenticación
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const Header = () => {
   const [logoUrl, setLogoUrl] = useState('');
+  const [userName, setUserName] = useState(''); // Estado para almacenar el nombre del usuario
+  const [accountType, setAccountType] = useState(''); // Estado para almacenar el tipo de cuenta
+  const { currentUser, logout } = useAuth();
+  const { getTotalItems } = useCart();
+  const navigate = useNavigate();
 
+  // Obtener el logo desde Firebase Storage
   useEffect(() => {
     const fetchLogoUrl = async () => {
       try {
@@ -23,12 +31,38 @@ const Header = () => {
     };
     fetchLogoUrl();
   }, []);
-  const [searchTerm, setSearchTerm] = useState('');
-  const navigate = useNavigate();
-  const { getTotalItems } = useCart(); // Usa el hook useCart en lugar de CartContext
-  const { currentUser, logout } = useAuth(); // Obtén currentUser y logout desde AuthContext
 
-  const totalItems = getTotalItems();
+  // Cargar datos del usuario desde Firestore usando email
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (currentUser && currentUser.email) {
+        try {
+          const usersRef = collection(db, 'users');
+          const q = query(usersRef, where('email', '==', currentUser.email));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            const userData = querySnapshot.docs[0].data();
+            setUserName(`${userData.firstName} ${userData.lastName}`); // Nombre completo desde Firestore
+            setAccountType(userData.accountType || 'user'); // Obtener el tipo de cuenta
+          } else {
+            console.error('No se encontraron documentos para el correo:', currentUser.email);
+            setUserName('Usuario');
+            setAccountType('user');
+          }
+        } catch (error) {
+          console.error('Error al obtener datos del usuario desde Firestore:', error);
+          setUserName('Usuario'); // En caso de error, mostrar "Usuario"
+          setAccountType('user');
+        }
+      } else {
+        setUserName(''); // Si no hay usuario autenticado, resetea el nombre
+        setAccountType(''); // Resetea el tipo de cuenta
+      }
+    };
+
+    fetchUserData();
+  }, [currentUser]);
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
@@ -38,6 +72,18 @@ const Header = () => {
     event.preventDefault();
     if (searchTerm.trim()) {
       navigate(`/search/${searchTerm}`);
+    }
+  };
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const totalItems = getTotalItems();
+
+  const handleLogout = async () => {
+    try {
+      await logout(); // Cerrar sesión
+      navigate('/'); // Redirigir a la página principal
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
     }
   };
 
@@ -62,9 +108,12 @@ const Header = () => {
       <Nav>
         {currentUser ? (
           <UserMenu>
-            <WelcomeText>Hola, {currentUser.displayName}</WelcomeText>
+            <WelcomeText>Hola, {userName}</WelcomeText>
             <UserDropdown>
-              <button onClick={logout}>Cerrar sesión</button>
+              {accountType === 'admin' && (
+                <Link to="/admin">Administración</Link>
+              )}
+              <button onClick={handleLogout}>Cerrar sesión</button>
             </UserDropdown>
           </UserMenu>
         ) : (
@@ -91,7 +140,6 @@ const HeaderContainer = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  overflow: hidden;
 `;
 
 const LogoContainer = styled.div`
@@ -220,6 +268,7 @@ const UserMenu = styled.div`
 const WelcomeText = styled.span`
   font-size: 16px;
   margin-right: 10px;
+  cursor: pointer;
 `;
 
 const UserDropdown = styled.div`
@@ -237,12 +286,17 @@ const UserDropdown = styled.div`
     display: block;
   }
 
-  button {
+  a, button {
+    display: block;
+    width: 100%;
     background-color: transparent;
     border: none;
     color: #004f9a;
     font-size: 16px;
     cursor: pointer;
+    text-align: left;
+    padding: 8px 0;
+    text-decoration: none;
 
     &:hover {
       text-decoration: underline;

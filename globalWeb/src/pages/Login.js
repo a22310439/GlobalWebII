@@ -1,18 +1,94 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { useAuth } from '../context/AuthContext'; // Usa el contexto de autenticación
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { getDocs, query, where, collection, addDoc } from 'firebase/firestore';
+import { db } from '../firebase'; // Configuración de Firebase
 
 const LoginPage = () => {
-  const { login, loginWithEmailPassword, registerWithEmailPassword } = useAuth();
+  const { loginWithEmailPassword, login, registerWithEmailPassword } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState(''); // Nombre
-  const [lastName, setLastName] = useState('');   // Apellido
-  const [isRegister, setIsRegister] = useState(false); // Estado para cambiar entre login y registro
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState(null);
 
+  // Manejo del inicio de sesión
+  const handleEmailPasswordLogin = async (event) => {
+    event.preventDefault();
+    setError(null);
+
+    try {
+      // Buscar al usuario por correo o nombre de usuario
+      const userQuery = query(
+        collection(db, 'users'),
+        identifier.includes('@')
+          ? where('email', '==', identifier)
+          : where('username', '==', identifier)
+      );
+      const querySnapshot = await getDocs(userQuery);
+
+      if (querySnapshot.empty) {
+        throw new Error('Usuario o correo no encontrado');
+      }
+
+      const user = querySnapshot.docs[0].data();
+
+      if (user.password !== password) {
+        throw new Error('Contraseña incorrecta');
+      }
+
+      // Iniciar sesión en Firebase Authentication
+      await loginWithEmailPassword(user.email, password);
+
+      // Verificar el tipo de cuenta y redirigir
+      if (user.accountType === 'admin') {
+        navigate('/admin'); // Redirige a la pantalla de administración
+      } else {
+        navigate('/'); // Redirige a la pantalla principal
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Manejo del registro
+  const handleEmailPasswordRegister = async (event) => {
+    event.preventDefault();
+    setError(null);
+
+    try {
+      const userQuery = query(collection(db, 'users'), where('username', '==', username));
+      const userSnapshot = await getDocs(userQuery);
+
+      if (!userSnapshot.empty) {
+        throw new Error('El nombre de usuario ya está en uso');
+      }
+
+      // Registrar usuario en Firebase Authentication
+      await registerWithEmailPassword(email, password);
+
+      // Guardar datos adicionales en Firestore
+      await addDoc(collection(db, 'users'), {
+        username,
+        email,
+        firstName,
+        lastName,
+        password,
+        accountType: 'usuario', // Tipo de cuenta por defecto
+      });
+
+      navigate('/'); // Redirigir al home después del registro
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Manejo del inicio de sesión con Google
   const handleGoogleLogin = async () => {
     try {
       await login();
@@ -22,78 +98,79 @@ const LoginPage = () => {
     }
   };
 
-  const handleEmailPasswordLogin = async (event) => {
-    event.preventDefault();
-    try {
-      await loginWithEmailPassword(email, password);
-      navigate('/'); // Redirigir al home después del login
-    } catch (err) {
-      setError('Correo o contraseña incorrectos.');
-    }
-  };
-
-  const handleEmailPasswordRegister = async (event) => {
-    event.preventDefault();
-    try {
-      await registerWithEmailPassword(email, password, firstName, lastName); // Pasa el nombre y apellido
-      navigate('/'); // Redirigir al home después del registro
-    } catch (err) {
-      setError('No se pudo crear la cuenta. Inténtalo de nuevo.');
-    }
-  };
-
   return (
     <LoginContainer>
       <LoginBox>
         <Title>{isRegister ? 'Registrarse' : 'Iniciar Sesión'}</Title>
 
-        <form onSubmit={isRegister ? handleEmailPasswordRegister : handleEmailPasswordLogin}>
-          {isRegister && (
-            <>
-              <Input
-                type="text"
-                placeholder="Nombre"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-              />
-              <Input
-                type="text"
-                placeholder="Apellido"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-              />
-            </>
-          )}
-          <Input
-            type="email"
-            placeholder="Correo electrónico"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <LoginButton type="submit">
-            {isRegister ? 'Registrarse con correo' : 'Iniciar sesión con correo'}
-          </LoginButton>
-        </form>
-
-        <Separator>O</Separator>
+        {isRegister ? (
+          <form onSubmit={handleEmailPasswordRegister}>
+            <Input
+              type="text"
+              placeholder="Nombre de Usuario"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+            <Input
+              type="text"
+              placeholder="Nombre"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+            <Input
+              type="text"
+              placeholder="Apellido"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+            <Input
+              type="email"
+              placeholder="Correo Electrónico"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <LoginButton type="submit">Registrarse</LoginButton>
+          </form>
+        ) : (
+          <form onSubmit={handleEmailPasswordLogin}>
+            <Input
+              type="text"
+              placeholder="Correo o Nombre de Usuario"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <LoginButton type="submit">Iniciar Sesión con Correo</LoginButton>
+          </form>
+        )}
 
         {!isRegister && (
-          <LoginButton onClick={handleGoogleLogin}>Iniciar sesión con Google</LoginButton>
+          <>
+            <Separator>O</Separator>
+            <LoginButton onClick={handleGoogleLogin}>Iniciar sesión con Google</LoginButton>
+          </>
         )}
 
         {error && <ErrorMessage>{error}</ErrorMessage>}
 
-        {/* Cambiar entre Login y Registro */}
         <ToggleText onClick={() => setIsRegister(!isRegister)}>
           {isRegister
             ? '¿Ya tienes cuenta? Inicia sesión aquí.'
@@ -125,6 +202,23 @@ const LoginBox = styled.div`
   width: 100%;
 `;
 
+const Separator = styled.div`
+  margin: 20px 0;
+  font-size: 16px;
+  color: #666;
+  text-align: center;
+  &::before,
+  &::after {
+    content: '';
+    display: inline-block;
+    width: 30%;
+    height: 1px;
+    background: #ccc;
+    vertical-align: middle;
+    margin: 0 10px;
+  }
+`;
+
 const Title = styled.h1`
   font-size: 24px;
   color: #004f9a;
@@ -154,12 +248,6 @@ const LoginButton = styled.button`
   &:hover {
     background-color: #003366;
   }
-`;
-
-const Separator = styled.div`
-  margin: 20px 0;
-  font-size: 16px;
-  color: #666;
 `;
 
 const ErrorMessage = styled.p`

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useCart } from '../context/CartContext';
-import { storage } from '../firebase';
+import { storage, db } from '../firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { collection, addDoc, Timestamp, doc, updateDoc, increment, getDocs, query, where } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 const CartPage = () => {
-  const { cartItems, updateCartItemQuantity, removeFromCart } = useCart();
+  const { cartItems, updateCartItemQuantity, removeFromCart, clearCart } = useCart();
+  const { currentUser } = useAuth(); // Obtenemos el usuario actual
+  const navigate = useNavigate(); // Para redirigir después de la compra
 
   const totalItemsInCart = cartItems.reduce((total, item) => total + item.quantity, 0);
 
@@ -50,6 +54,68 @@ const CartPage = () => {
     };
     fetchEmptyCartImage();
   }, []);
+
+  const handlePurchase = async () => {
+    try {
+      if (!currentUser) {
+        alert('Por favor, inicia sesión para continuar con la compra.');
+        return;
+      }
+
+      // Obtener datos del usuario desde Firestore usando el correo electrónico
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', currentUser.email));
+      const querySnapshot = await getDocs(q);
+
+      let userData = {};
+      if (!querySnapshot.empty) {
+        userData = querySnapshot.docs[0].data();
+      } else {
+        console.error('No se encontraron documentos para el correo:', currentUser.email);
+        userData = {
+          firstName: '',
+          lastName: '',
+          email: currentUser.email,
+        };
+      }
+
+      const saleData = {
+        date: Timestamp.now(),
+        userId: currentUser.uid,
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        email: currentUser.email || '',
+        items: cartItems.map((item) => ({
+          productId: item.id,
+          productName: item.name,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          totalPrice: item.price * item.quantity,
+        })),
+        totalAmount: parseFloat((subtotalAfterDiscount + iva).toFixed(2)),
+      };
+
+      // Agregar la venta a Firestore
+      await addDoc(collection(db, 'sales'), saleData);
+
+      // Actualizar el stock de los productos comprados
+      for (const item of cartItems) {
+        const productRef = doc(db, 'products', item.id);
+        await updateDoc(productRef, {
+          stock: increment(-item.quantity),
+        });
+      }
+
+      // Vaciar el carrito
+      clearCart();
+
+      alert('¡Compra realizada con éxito!');
+      navigate('/'); // Redirigir al inicio o a la página que desees
+    } catch (error) {
+      console.error('Error al registrar la venta:', error);
+      alert('Hubo un error al procesar tu compra. Por favor, intenta de nuevo.');
+    }
+  };
 
   if (totalItemsInCart === 0) {
     return (
@@ -114,7 +180,7 @@ const CartPage = () => {
           ))}
         </CartItems>
         <CartSummary>
-          <p>Subtotal ({totalItemsInCart} artículo{totalItemsInCart !== 1 && 's'}): <span>${cartItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)}</span></p>
+          <p>Subtotal ({totalItemsInCart} artículo{totalItemsInCart !== 1 && 's'}): <span>${subtotalAfterDiscount.toFixed(2)}</span></p>
 
           {/* Mostrar el total del descuento en color verde */}
           {totalDiscount > 0 && <DiscountText>Descuento: <span>-${totalDiscount ? totalDiscount.toFixed(2) : '0.00'}</span></DiscountText>}
@@ -127,7 +193,7 @@ const CartPage = () => {
 
           {/* Mostrar el total en negritas */}
           <TotalText>Total: <span>${(subtotalAfterDiscount + iva).toFixed(2)}</span></TotalText>
-          <CheckoutButton>Continuar</CheckoutButton>
+          <CheckoutButton onClick={handlePurchase}>Continuar</CheckoutButton>
         </CartSummary>
       </CartContent>
     </CartContainer>

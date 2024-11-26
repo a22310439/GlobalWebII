@@ -11,7 +11,7 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
-  const { currentUser } = useAuth(); // Obtener el usuario actual de AuthContext
+  const { currentUser } = useAuth(); // Obtener el usuario actual
 
   // Recuperar carrito del usuario desde Firestore
   useEffect(() => {
@@ -79,6 +79,12 @@ export const CartProvider = ({ children }) => {
     });
   };
 
+  // **Agregar la función clearCart aquí**
+  const clearCart = () => {
+    setCartItems([]); // Vaciar el estado local del carrito
+    saveCart([]); // Guardar el carrito vacío en Firestore
+  };
+
   // Obtener el número total de artículos en el carrito
   const getTotalItems = () => {
     return cartItems.reduce((total, item) => total + item.quantity, 0);
@@ -89,11 +95,13 @@ export const CartProvider = ({ children }) => {
     return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
   };
 
+  // **Asegurarse de incluir clearCart en el objeto value**
   const value = {
     cartItems,
     addToCart,
     updateCartItemQuantity,
     removeFromCart,
+    clearCart, // Añadimos clearCart aquí
     getTotalItems,
     getCartTotal,
   };

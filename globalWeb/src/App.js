@@ -8,6 +8,7 @@ import Product from './pages/Product';
 import CategoryPage from './pages/CategoryPage';
 import Cart from './pages/Cart';
 import Login from './pages/Login';
+import AdminPage from './pages/AdminPage';
 import SearchResultsPage from './pages/SearchResultsPage';
 import { CartProvider } from './context/CartContext';  
 import { AuthProvider } from './context/AuthContext';  // Importa el proveedor de autenticación
@@ -25,6 +26,7 @@ function App() {
           <Route path="/category/:categoryName" element={<CategoryPage />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/search/:searchTerm" element={<SearchResultsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
         <Footer />
       </CartProvider>
